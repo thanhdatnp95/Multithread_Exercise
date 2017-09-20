@@ -1,5 +1,5 @@
 CC = g++
-CFLAGS = -Wall -g -pthread
+CFLAGS = -std=c++11 -Wall -g -pthread
 SRCS = $(wildcard *.cpp)
 OBJS = $(patsubst %.cpp,%.o,$(SRCS))
 TARGET = IOCache

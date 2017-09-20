@@ -9,7 +9,7 @@
 #ifndef _MESSAGEQUEUE_H_
 #define _MESSAGEQUEUE_H_
 
-#define        MAX_MESSAGES        10   // Maximum number of messages in the queue
+#define        MAX_MESSAGES        16   // Maximum number of messages in the queue
 
 #include <iostream>
 #include <list>

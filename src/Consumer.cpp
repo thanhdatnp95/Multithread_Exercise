@@ -29,31 +29,33 @@ Consumer::~Consumer() { }
 /*
  * @internal Start the consumer
  */
-void Consumer::Start(pthread_mutex_t& queueMutex, pthread_cond_t& fullVar, pthread_cond_t& emptyVar)
+void Consumer::Start(unsigned int size, pthread_mutex_t* queueMutex, pthread_cond_t* fullVar, pthread_cond_t* emptyVar)
 {
+    unsigned int seqNum = 0;
     cout << "CONSUMER: STARTED" << endl;
 
-    while (true)
+    while (seqNum < size)
     {
         // Synchronization
-        pthread_mutex_lock(&queueMutex);
+        pthread_mutex_lock(queueMutex);
 
         while(queue->IsEmpty())
         {
             cout << "CONSUMER: Suspended" << endl;
             // Wait for signal (NOT EMPTY)
-            pthread_cond_wait(&emptyVar, &queueMutex);
+            pthread_cond_wait(emptyVar, queueMutex);
             cout << "CONSUMER: Waken up" << endl;
         }
         // Read and remove message from queue
         Message* message = queue->Dequeue();
         // Signal any waiting thread (NOT FULL)
-        pthread_cond_signal(&fullVar);
+        pthread_cond_signal(fullVar);
         
-        pthread_mutex_unlock(&queueMutex);
+        pthread_mutex_unlock(queueMutex);
 
         // Write data to a low-speed IO
         cout << "CONSUMER: Package #" << message->id << " was received" << endl;
+        seqNum++;
         delete message;
         sleep(2);     
     }

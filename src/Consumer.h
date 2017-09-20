@@ -40,12 +40,13 @@ public:
      *
      * The function will start the consumer.
      *
+     * @param[in] size number of data blocks
      * @param[in,out] mutexQueue the MUTEX variable for synchronization
      * @param[in,out] fullVar the condition variable for checking the full status
      * @param[in,out] emptyVar the condition variable for checking the empty status
      * @return no value
      */
-    void Start(pthread_mutex_t& mutexQueue, pthread_cond_t& fullVar, pthread_cond_t& emptyVar);
+    void Start(unsigned int size, pthread_mutex_t* mutexQueue, pthread_cond_t* fullVar, pthread_cond_t* emptyVar);
 };
 
 #endif // _CONSUMER_H_
