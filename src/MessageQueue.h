@@ -9,10 +9,11 @@
 #ifndef _MESSAGEQUEUE_H_
 #define _MESSAGEQUEUE_H_
 
-#define        MAX_MESSAGES        16   // Maximum number of messages in the queue
+#define        MAX_MESSAGES        8   // Maximum number of messages in the queue
 
 #include <iostream>
 #include <list>
+#include <string>
 using namespace std;
 
 /*!
@@ -25,8 +26,8 @@ using namespace std;
  */
 struct Message
 {
-    int id;
-    string data;
+    unsigned int id;
+    char data;
 };
 
 /*!

@@ -9,195 +9,216 @@
 #include "gtest/gtest.h"
 #include "Producer.h"
 #include "Consumer.h"
-#include <pthread.h>
+#include "ThreadMaterial.h"
 
-union ThreadInput
-{
-    // For producer
-    struct
-    {
-        pthread_mutex_t* queueMutexP;
-        pthread_cond_t* fullVarP;
-        pthread_cond_t* emptyVarP;
-
-        unsigned int sizeP;
-        Producer* producer;
-        MessageQueue* messageQueueP;
-        MessageQueue* dataIn;
-    };
-    //For consumer
-    struct
-    {
-        pthread_mutex_t* queueMutexC;
-        pthread_cond_t* fullVarC;
-        pthread_cond_t* emptyVarC;
-
-        unsigned int sizeC;
-        Consumer* consumer;
-        MessageQueue* messageQueueC;
-        MessageQueue* dataOut;
-    };
-};
-
-/*
-* @internal This is the thread handler for the producer
-*/
-void* StartProducer(void *input)
-{
-    if (input == NULL)
-    {
-        cout << "WARNING: Invalid producer" << endl;
-        pthread_exit(NULL);
-    }
-
-    ThreadInput* threadInput = (ThreadInput*)input;
-    // Start the producer
-    Producer* producer = threadInput->producer;
-    producer->Start(threadInput->sizeP, threadInput->queueMutexP, threadInput->fullVarP, threadInput->emptyVarP);
-
-    cout << "PRODUCER: TERMINATED" << endl;
-    pthread_exit(NULL);
-}
-
-/*
-* @internal This is the thread handler for the consumer
-*/
-void* StartConsumer(void *input)
-{
-    if (input == NULL)
-    {
-        cout << "WARNING: Invalid consumer" << endl;
-        pthread_exit(NULL);
-    }
-
-    ThreadInput* threadInput = (ThreadInput*)input;
-    // Start the comsumer
-    consumer->Start(threadInput->sizeC, threadInput->queueMutexC, threadInput->fullVarC, threadInput->emptyVarC);
-
-    cout << "CONSUMER: TERMINATED" << endl;
-    pthread_exit(NULL);
-}
-
+/*!
+ * @brief The FunctionalTest class is used to test the operation of the
+ * program.
+ * 
+ */
 class FunctionalTest : public ::testing::Test
 {
 protected:
-    ThreadInput* producerInput = new ThreadInput();
-    ThreadInput* consumerInput = producerInput;
+    // Input variables for threads
+    ProducerInput* producerInput;
+    ConsumerInput* consumerInput;
 
+    // Thread variables
     pthread_t producerThread;
     pthread_t consumerThread;
     pthread_mutex_t queueMutex;
     pthread_cond_t fullVar;
     pthread_cond_t emptyVar;
-
-    Producer* producer;
-    Consumer* consumer;
-    MessageQueue* messageQueue;
-
     void* status;
 
-    virtual void SetUp()
+    // Main objects
+    Producer* producer;
+    Consumer* consumer;
+    MessageQueue* messageQueue;    
+
+    FunctionalTest()
     {
-        // Init pthread variables
+        // Not implemented
+    }
+    ~FunctionalTest()
+    {
+        // Not implemented
+    }
+
+    virtual void SetUp()
+    {   
+        // Init thread variables
         pthread_mutex_init(&queueMutex, NULL);
         pthread_cond_init(&emptyVar, NULL);
         pthread_cond_init(&fullVar, NULL);
 
+        // Init essential variables
+        messageQueue = new MessageQueue();
+        producer = new Producer(messageQueue);
+        consumer = new Consumer(messageQueue);
+
         // Init thread input
-        producerInput->queueMutexP = &queueMutex;
-        producerInput->fullVarP = &fullVar;
-        producerInput->emptyVarP = &emptyVar;
+        producerInput = new ProducerInput();
+        consumerInput = new ConsumerInput();
+
+        producerInput->producer = producer;
+        producerInput->messageQueue = messageQueue;
+        producerInput->queueMutex = &queueMutex;
+        producerInput->fullVar = &fullVar;
+        producerInput->emptyVar = &emptyVar;
+        
+        consumerInput->consumer = consumer;
+        consumerInput->messageQueue = messageQueue;
+        consumerInput->queueMutex = &queueMutex;
+        consumerInput->fullVar = &fullVar;
+        consumerInput->emptyVar = &emptyVar;
     }
 
     virtual void TearDown()
     {
+        //Release resources
         delete producerInput;
+        delete consumerInput;
+        delete messageQueue;
+        delete producer;
+        delete consumer;
     }     
 };
 
+/*!
+ * @internal This test will test when no data is entered.
+ */
 TEST_F(FunctionalTest, NoData)
 {
-    // Init data
-    messageQueue = new MessageQueue();
-    producer = new Producer(messageQueue);
-    consumer = new Consumer(messageQueue);
-
-    producerInput->producer = producer;
-    producerInput->messageQueueP = messageQueue;
-    producerInput->sizeP = 0;
+    // Init data   
+    producerInput->dataIn = "";
+    producerInput->size = producerInput->dataIn.length();    
+    
+    consumerInput->dataOut = "";
+    consumerInput->size = producerInput->dataIn.length();
 
     // Create producer thread
-    if (pthread_create(&producerThread, NULL, StartProducer, (void *) producerInput) != 0)
-    {
-        cerr << "Could not create Producer" << endl;
-    }
-
-    consumerInput->consumer = consumer;
+    pthread_create(&producerThread, NULL, StartProducer, (void *) producerInput);
 
     // Create consumer thread
-    if (pthread_create(&consumerThread, NULL, StartConsumer, (void *) consumerInput) != 0)
-    {
-        cerr << "Could not create Consumer" << endl;
-    }
+    pthread_create(&consumerThread, NULL, StartConsumer, (void *) consumerInput);
 
     // Wait for all threads are terminated
     pthread_join(producerThread, &status);
     pthread_join(consumerThread, &status);
-
-    // Release resources
-    delete messageQueue;
-    delete producer;
-    delete consumer;
+    
+    // Compare data
+    EXPECT_EQ(producerInput->dataIn, consumerInput->dataOut);
 }
 
+/*!
+ * @internal This test will test when data size is smaller than buffer size
+ */
 TEST_F(FunctionalTest, DataNotOverflow)
 {
     // Init data
-    messageQueue = new MessageQueue();
-    producer = new Producer(messageQueue);
-    consumer = new Consumer(messageQueue);
+    producerInput->dataIn = "The first test";
+    producerInput->size = producerInput->dataIn.length();
 
-    producerInput->producer = producer;
-    producerInput->messageQueueP = messageQueue;
-    producerInput->sizeP = 10;
+    consumerInput->dataOut = "";
+    consumerInput->size = producerInput->dataIn.length();
 
     // Create producer thread
-    if (pthread_create(&producerThread, NULL, StartProducer, (void *) producerInput) != 0)
-    {
-        cerr << "Could not create Producer" << endl;
-    }
-
-    consumerInput->consumer = consumer;
+    pthread_create(&producerThread, NULL, StartProducer, (void *) producerInput);
 
     // Create consumer thread
-    if (pthread_create(&consumerThread, NULL, StartConsumer, (void *) consumerInput) != 0)
-    {
-        cerr << "Could not create Consumer" << endl;
-    }
+    pthread_create(&consumerThread, NULL, StartConsumer, (void *) consumerInput);
 
     // Wait for all threads are terminated
     pthread_join(producerThread, &status);
     pthread_join(consumerThread, &status);
-
-    // Release resources
-    delete messageQueue;
-    delete producer;
-    delete consumer;
+    
+    // Compare data
+    EXPECT_EQ(producerInput->dataIn, consumerInput->dataOut);
 }
 
+/*!
+ * @internal This test will test when data size is bigger than buffer size
+ */
 TEST_F(FunctionalTest, DataOverflow)
 {
+    //Init data
+    producerInput->dataIn = "The second test (Overflow)";
+    producerInput->size = producerInput->dataIn.length();
 
+    consumerInput->dataOut = "";
+    consumerInput->size = producerInput->dataIn.length();
+
+    // Create producer thread
+    pthread_create(&producerThread, NULL, StartProducer, (void *) producerInput);
+
+    // Create consumer thread
+    pthread_create(&consumerThread, NULL, StartConsumer, (void *) consumerInput);
+
+    // Wait for all threads are terminated
+    pthread_join(producerThread, &status);
+    pthread_join(consumerThread, &status);
+    
+    // Compare data
+    EXPECT_EQ(producerInput->dataIn, consumerInput->dataOut);
 }
 
+/*!
+ * @internal This test will test when Producer starts afer Consumer
+ */
 TEST_F(FunctionalTest, ProducerStartLate)
 {
+    //Init data
+    producerInput->dataIn = "The third test";
+    producerInput->size = producerInput->dataIn.length();
 
+    consumerInput->dataOut = "";
+    consumerInput->size = producerInput->dataIn.length();
+
+    // Create consumer thread
+    pthread_create(&consumerThread, NULL, StartConsumer, (void *) consumerInput);
+
+    // Producer start 5 secs later than comsumer
+    sleep(5);
+
+    // Create producer thread
+    pthread_create(&producerThread, NULL, StartProducer, (void *) producerInput);
+
+    // Wait for all threads are terminated
+    pthread_join(producerThread, &status);
+    pthread_join(consumerThread, &status);
+    
+    // Compare data
+    EXPECT_EQ(producerInput->dataIn, consumerInput->dataOut);
 }
 
+/*!
+ * @internal This test will test when Consumer starts afer Producer
+ */
 TEST_F(FunctionalTest, ConsumerStartLate)
 {
+    //Init data
+    producerInput->dataIn = "The final test";
+    producerInput->size = producerInput->dataIn.length();
 
+    consumerInput->dataOut = "";
+    consumerInput->size = producerInput->dataIn.length();
+
+    // Create producer thread
+    pthread_create(&producerThread, NULL, StartProducer, (void *) producerInput);
+
+    // Consumer start 5 secs later than producer
+    sleep(5);
+
+    // Create consumer thread
+    pthread_create(&consumerThread, NULL, StartConsumer, (void *) consumerInput);
+
+    // Wait for all threads are terminated
+    pthread_join(producerThread, &status);
+    pthread_join(consumerThread, &status);
+    
+    // Compare data
+    EXPECT_EQ(producerInput->dataIn, consumerInput->dataOut);
 }
 
 int main(int argc, char** argv)

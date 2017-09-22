@@ -46,7 +46,7 @@ public:
      * @param[in,out] emptyVar the condition variable for checking the empty status
      * @return no value
      */
-    void Start(unsigned int size, pthread_mutex_t* mutexQueue, pthread_cond_t* fullVar, pthread_cond_t* emptyVar);
+    void Start(string& dataOut, unsigned int size, pthread_mutex_t* mutexQueue, pthread_cond_t* fullVar, pthread_cond_t* emptyVar);
 };
 
 #endif // _CONSUMER_H_

@@ -47,12 +47,6 @@ bool MessageQueue::IsFull()
  */
 void MessageQueue::Enqueue(Message* message)
 {
-    if (this->IsFull())
-    {
-        cout << "ERROR: The message queue is full. No element can be inserted" << endl;
-        return;
-    }
-
     queue.push_back(message);
 }
 
@@ -61,12 +55,6 @@ void MessageQueue::Enqueue(Message* message)
  */
 Message* MessageQueue::Dequeue()
 {
-    if (this->IsEmpty())
-    {
-        cout << "ERROR: The message queue is empty. Cannot retrieve any element" << endl;
-        return NULL;
-    }
-
     Message* message = queue.front();
     queue.pop_front();
 
